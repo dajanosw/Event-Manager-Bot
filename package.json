@@ -1,0 +1,16 @@
+{
+  "name": "event-manager-bot",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "discord.js": "^14.20.0",
+    "winston": "^3.17.0"
+  }
+}
