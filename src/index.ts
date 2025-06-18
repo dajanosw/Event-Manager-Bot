@@ -90,8 +90,8 @@ async function createNewEvent(eventInfo: string, discordMessageAttatchment: stri
     eventInfoParts = eventInfo.split("; ")
 
     let eventName:string = eventInfoParts[0]!
-    let startTime = new Date(eventInfoParts[1]!);
-    let endTime = new Date(eventInfoParts[2]!);
+    let startTime = new Date(parseCustomDate(eventInfoParts[1]!)!);
+    let endTime = new Date(parseCustomDate(eventInfoParts[2]!)!);
     let location = eventInfoParts[3]
     let eventDescription:string = eventInfoParts[4]!
 
@@ -121,4 +121,24 @@ async function createNewEvent(eventInfo: string, discordMessageAttatchment: stri
 /** Creates a reoccuring event from input */
 async function createNewSchedule(eventInfo: string, discordMessageAttatchment: string, guildID: string): Promise<void> {
     logger.info("Invoking new Schedule: " + eventInfo)
+}
+
+function parseCustomDate(input: string): Date | null {
+    const match = input.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) UTC([+-]\d{1,2})(?::(\d{2}))?$/);
+    if (!match) return null;
+
+    const datePart = match[1];           // z.B. 2025-06-19
+    const timePart = match[2];           // z.B. 14:00
+    const offsetHour = match[3]!;         // z.B. +1 oder -02
+    const offsetMinute = match[4] ?? "00"; // z.B. 30 oder default "00"
+
+    // Stelle sicher, dass die Stunde zweistellig ist (z.B. "+1" => "+01")
+    const offsetSign = offsetHour.startsWith('-') ? '-' : '+';
+    const offsetHourNum = offsetHour.replace(/^[+-]/, '').padStart(2, '0');
+
+    const utcOffset = `${offsetSign}${offsetHourNum}:${offsetMinute}`;
+    const isoString = `${datePart}T${timePart}:00${utcOffset}`;
+
+    const parsed = new Date(isoString);
+    return isNaN(parsed.getTime()) ? null : parsed;
 }
