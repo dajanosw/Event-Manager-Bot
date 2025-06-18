@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, SlashCommandBuilder, GuildScheduledEventManager, GuildScheduledEventPrivacyLevel, GuildScheduledEventEntityType } from 'discord.js'
+import { Client, Events, GatewayIntentBits, TextChannel,  GuildScheduledEventPrivacyLevel, GuildScheduledEventEntityType } from 'discord.js'
 import { createLogger, format, transports } from 'winston'
 import fs from 'fs';
 import path from 'path';
@@ -47,6 +47,7 @@ try {
         let discordMessageLines: string[] = new Array()
         let discordMessageAttatchment = ""
         let discordServerID = message.guild?.id
+        let channelSent = message.channel.id
 
         // Split up the message string by Lines and double colons
         discordMessageLines = discordMessage.split("\n")
@@ -57,12 +58,12 @@ try {
             switch(discordMessageParts[0]) {
                 // In Case "New Event" create a new one-time Discord Event
                 case "New Event": {
-                    createNewEvent(discordMessageParts[1]!, discordMessageAttatchment, discordServerID!)
+                    createNewEvent(discordMessageParts[1]!, discordMessageAttatchment, discordServerID!, channelSent!)
                     break
                 }
                 // In Case "New Schedule" create a new Discord Event with Input
                 case "New Schedule": {
-                    createNewSchedule(discordMessageParts[1]!, discordMessageAttatchment, discordServerID!)
+                    createNewSchedule(discordMessageParts[1]!, discordMessageAttatchment, discordServerID!, channelSent!)
                     break
                 }
                 default: {
@@ -85,9 +86,10 @@ await client.login(process.env.DISCORD_BOT_TOKEN)
 
 
 /** Creates an event from input */
-async function createNewEvent(eventInfo: string, discordMessageAttatchment: string, guildID: string): Promise<void> {
+async function createNewEvent(eventInfo: string, discordMessageAttatchment: string, guildID: string, replyChannel: string): Promise<void> {
     // Log the Input-Info
     logger.info("Invoking new Event: " + eventInfo)
+    let channel = client.channels.cache.get(replyChannel)
 
     // Split the Event Info String into Event Details
     let eventInfoParts: string[] = new Array()
@@ -96,9 +98,10 @@ async function createNewEvent(eventInfo: string, discordMessageAttatchment: stri
     // Catch Empty Timezone
     let eventTimezone = eventInfoParts[3]
     if(eventTimezone == ""){
-        eventTimezone = "Europe/London"
+        eventTimezone = "Europe/Amsterdam"
     }
 
+    // Define the remaining attributes
     let eventName:string = eventInfoParts[0]!
     let startTime = new Date(parseCustomDate(eventInfoParts[1]!, eventTimezone!)!);
     let endTime = new Date(parseCustomDate(eventInfoParts[2]!, eventTimezone!)!);
@@ -111,7 +114,9 @@ async function createNewEvent(eventInfo: string, discordMessageAttatchment: stri
             logger.error("Could not fetch Server-ID.")
             return
         }
-            
+        
+        let null_date = new Date(0)
+
         let guild = await client.guilds.fetch(guildID)
         let event = await guild.scheduledEvents.create({
             name: eventName,
@@ -123,34 +128,43 @@ async function createNewEvent(eventInfo: string, discordMessageAttatchment: stri
             description: eventDescription,
         })
         logger.info(`Event "${event.name}" created for ${startTime}`)
+        
+        if (channel && channel.isTextBased()) {
+            await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime}`)
+        }
+
     } catch(e) {
         logger.error("Failed to create event: " + e)
+        if (channel && channel.isTextBased()) {
+            await (channel as TextChannel).send("Failed: Invalid Timezone")
+        }
     }
 }
 
 /** Creates a reoccuring event from input */
-async function createNewSchedule(eventInfo: string, discordMessageAttatchment: string, guildID: string): Promise<void> {
+async function createNewSchedule(eventInfo: string, discordMessageAttatchment: string, guildID: string, replyChannel: string): Promise<void> {
     logger.info("Invoking new Schedule: " + eventInfo)
 }
 
+/** Parses Format YYYY-MM-DD HH:MM and timezone into UTC-Format ISO 8601*/
 function parseCustomDate(dateTime: string, tz: string): Date | null {
+    // Check for correct DateTime-Format 
     let regex = /^(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2})$/;
     let match = dateTime.match(regex)
-    
-
     if (!match) {
-        throw new Error(`Invalid Date Format: ${dateTime}`)
+        logger.error(`Invalid Date Format: ${dateTime}`)
+        return null
     }
 
-    const [_, datePart, hourStr, minuteStr] = match
-
-    // Verwende die übergebene Zeitzone zur Interpretation der Uhrzeit
-    const dt = DateTime.fromFormat(`${datePart} ${hourStr}:${minuteStr}`, 'yyyy-MM-dd HH:mm', {
+    // Convert into luxon-Format
+    let [_, datePart, hourStr, minuteStr] = match
+    let dt = DateTime.fromFormat(`${datePart} ${hourStr}:${minuteStr}`, 'yyyy-MM-dd HH:mm', {
         zone: tz,
     })
 
     if (!dt.isValid) {
-        throw new Error(`Ungültige Zeit oder Zeitzone: ${dt.invalidExplanation}`)
+        logger.error(`Invalid Time or Timezone: ${dt.invalidExplanation}`)
+        return null
     }
 
     let returnDate = new Date(dt.toUTC().toISO())
