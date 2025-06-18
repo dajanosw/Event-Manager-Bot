@@ -2,7 +2,7 @@ import { Client, Events, GatewayIntentBits, SlashCommandBuilder, GuildScheduledE
 import { createLogger, format, transports } from 'winston'
 import fs from 'fs';
 import path from 'path';
-import { error } from 'console';
+import { DateTime } from 'luxon';
 
 // Create a new client with Intents for Discord
 const client = new Client({
@@ -46,7 +46,7 @@ try {
         let discordMessage = message.content
         let discordMessageLines: string[] = new Array()
         let discordMessageAttatchment = ""
-        let discordServerID = message.guildId
+        let discordServerID = message.guild?.id
 
         // Split up the message string by Lines and double colons
         discordMessageLines = discordMessage.split("\n")
@@ -80,6 +80,10 @@ try {
 
 await client.login(process.env.DISCORD_BOT_TOKEN)
 
+
+
+
+
 /** Creates an event from input */
 async function createNewEvent(eventInfo: string, discordMessageAttatchment: string, guildID: string): Promise<void> {
     // Log the Input-Info
@@ -89,30 +93,36 @@ async function createNewEvent(eventInfo: string, discordMessageAttatchment: stri
     let eventInfoParts: string[] = new Array()
     eventInfoParts = eventInfo.split("; ")
 
+    // Catch Empty Timezone
+    let eventTimezone = eventInfoParts[3]
+    if(eventTimezone == ""){
+        eventTimezone = "Europe/London"
+    }
+
     let eventName:string = eventInfoParts[0]!
-    let startTime = new Date(parseCustomDate(eventInfoParts[1]!)!);
-    let endTime = new Date(parseCustomDate(eventInfoParts[2]!)!);
-    let location = eventInfoParts[3]
-    let eventDescription:string = eventInfoParts[4]!
+    let startTime = new Date(parseCustomDate(eventInfoParts[1]!, eventTimezone!)!);
+    let endTime = new Date(parseCustomDate(eventInfoParts[2]!, eventTimezone!)!);
+    let location = eventInfoParts[4]
+    let eventDescription:string = eventInfoParts[5]!
 
     // Input the Info into a new Discord Event
     try {
-        if(guildID = "") {
+        if(guildID == null) {
             logger.error("Could not fetch Server-ID.")
             return
-        } else {
-            let guild = await client.guilds.fetch(guildID)
-            let event = await guild.scheduledEvents.create({
-                name: eventName,
-                scheduledStartTime: startTime,
-                scheduledEndTime: endTime,
-                privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
-                entityType: GuildScheduledEventEntityType.External,
-                entityMetadata: { location },
-                description: eventDescription,
-            })
-            logger.info(`Event "${event.name}" created for ${startTime}`)
         }
+            
+        let guild = await client.guilds.fetch(guildID)
+        let event = await guild.scheduledEvents.create({
+            name: eventName,
+            scheduledStartTime: startTime,
+            scheduledEndTime: endTime,
+            privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
+            entityType: GuildScheduledEventEntityType.External,
+            entityMetadata: { location },
+            description: eventDescription,
+        })
+        logger.info(`Event "${event.name}" created for ${startTime}`)
     } catch(e) {
         logger.error("Failed to create event: " + e)
     }
@@ -123,22 +133,27 @@ async function createNewSchedule(eventInfo: string, discordMessageAttatchment: s
     logger.info("Invoking new Schedule: " + eventInfo)
 }
 
-function parseCustomDate(input: string): Date | null {
-    const match = input.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) UTC([+-]\d{1,2})(?::(\d{2}))?$/);
-    if (!match) return null;
+function parseCustomDate(dateTime: string, tz: string): Date | null {
+    let regex = /^(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2})$/;
+    let match = dateTime.match(regex)
+    
 
-    const datePart = match[1];           // z.B. 2025-06-19
-    const timePart = match[2];           // z.B. 14:00
-    const offsetHour = match[3]!;         // z.B. +1 oder -02
-    const offsetMinute = match[4] ?? "00"; // z.B. 30 oder default "00"
+    if (!match) {
+        throw new Error(`Invalid Date Format: ${dateTime}`)
+    }
 
-    // Stelle sicher, dass die Stunde zweistellig ist (z.B. "+1" => "+01")
-    const offsetSign = offsetHour.startsWith('-') ? '-' : '+';
-    const offsetHourNum = offsetHour.replace(/^[+-]/, '').padStart(2, '0');
+    const [_, datePart, hourStr, minuteStr] = match
 
-    const utcOffset = `${offsetSign}${offsetHourNum}:${offsetMinute}`;
-    const isoString = `${datePart}T${timePart}:00${utcOffset}`;
+    // Verwende die übergebene Zeitzone zur Interpretation der Uhrzeit
+    const dt = DateTime.fromFormat(`${datePart} ${hourStr}:${minuteStr}`, 'yyyy-MM-dd HH:mm', {
+        zone: tz,
+    })
 
-    const parsed = new Date(isoString);
-    return isNaN(parsed.getTime()) ? null : parsed;
+    if (!dt.isValid) {
+        throw new Error(`Ungültige Zeit oder Zeitzone: ${dt.invalidExplanation}`)
+    }
+
+    let returnDate = new Date(dt.toUTC().toISO())
+
+    return returnDate
 }
