@@ -2,6 +2,7 @@ import { Client, Events, GatewayIntentBits, SlashCommandBuilder, GuildScheduledE
 import { createLogger, format, transports } from 'winston'
 import fs from 'fs';
 import path from 'path';
+import { error } from 'console';
 
 // Create a new client with Intents for Discord
 const client = new Client({
@@ -45,6 +46,7 @@ try {
         let discordMessage = message.content
         let discordMessageLines: string[] = new Array()
         let discordMessageAttatchment = ""
+        let discordServerID = message.guildId
 
         // Split up the message string by Lines and double colons
         discordMessageLines = discordMessage.split("\n")
@@ -55,12 +57,12 @@ try {
             switch(discordMessageParts[0]) {
                 // In Case "New Event" create a new one-time Discord Event
                 case "New Event": {
-                    createNewEvent(discordMessageParts[1]!, discordMessageAttatchment)
+                    createNewEvent(discordMessageParts[1]!, discordMessageAttatchment, discordServerID!)
                     break
                 }
                 // In Case "New Schedule" create a new Discord Event with Input
                 case "New Schedule": {
-                    createNewSchedule(discordMessageParts[1]!, discordMessageAttatchment)
+                    createNewSchedule(discordMessageParts[1]!, discordMessageAttatchment, discordServerID!)
                     break
                 }
                 default: {
@@ -79,23 +81,44 @@ try {
 await client.login(process.env.DISCORD_BOT_TOKEN)
 
 /** Creates an event from input */
-function createNewEvent(eventInfo: string, discordMessageAttatchment: string): void {
+async function createNewEvent(eventInfo: string, discordMessageAttatchment: string, guildID: string): Promise<void> {
     // Log the Input-Info
     logger.info("Invoking new Event: " + eventInfo)
 
     // Split the Event Info String into Event Details
     let eventInfoParts: string[] = new Array()
     eventInfoParts = eventInfo.split("; ")
-    let eventName = eventInfoParts[0]
-    let startTime = eventInfoParts[1]
-    let endTime = eventInfoParts[2]
+
+    let eventName:string = eventInfoParts[0]!
+    let startTime = new Date(eventInfoParts[1]!);
+    let endTime = new Date(eventInfoParts[2]!);
     let location = eventInfoParts[3]
-    let description = eventInfoParts[4]
+    let eventDescription:string = eventInfoParts[4]!
 
     // Input the Info into a new Discord Event
+    try {
+        if(guildID = "") {
+            logger.error("Could not fetch Server-ID.")
+            return
+        } else {
+            let guild = await client.guilds.fetch(guildID)
+            let event = await guild.scheduledEvents.create({
+                name: eventName,
+                scheduledStartTime: startTime,
+                scheduledEndTime: endTime,
+                privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
+                entityType: GuildScheduledEventEntityType.External,
+                entityMetadata: { location },
+                description: eventDescription,
+            })
+            logger.info(`Event "${event.name}" created for ${startTime}`)
+        }
+    } catch(e) {
+        logger.error("Failed to create event: " + e)
+    }
 }
 
 /** Creates a reoccuring event from input */
-function createNewSchedule(eventInfo: string, discordMessageAttatchment: string): void {
+async function createNewSchedule(eventInfo: string, discordMessageAttatchment: string, guildID: string): Promise<void> {
     logger.info("Invoking new Schedule: " + eventInfo)
 }
