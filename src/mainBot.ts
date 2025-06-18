@@ -50,6 +50,7 @@ try {
         let discordServerID = message.guild?.id
         let channelSent = message.channel.id
         let botPrefix = "!dmb "
+        var botPrefixRegEx = /!dmb /gi
 
         // Split up the message string by Lines and double colons
         discordMessageLines = discordMessage.split("\n")
@@ -58,12 +59,17 @@ try {
         for (let line of discordMessageLines) {
             if(line.startsWith(botPrefix)){    
                 // Remove Prefix
-                line.replace(botPrefix, "")
-                
+                line = line.replace(botPrefixRegEx, "")
+
                 // Split up in Case-Identifyer and Data
                 let discordMessageParts: string[] = new Array()
                 discordMessageParts = line.split(": ")
-
+                
+                console.log("eventInfo: " + discordMessageParts[1])
+                console.log("discordMessageAttatchment: " + discordMessageAttatchment)
+                console.log("guildID: " + discordServerID)
+                console.log("replyChannel: " + channelSent)
+                
                 switch(discordMessageParts[0]) {
                     // In Case "New Event" create a new one-time Discord Event
                     case "New Event": {

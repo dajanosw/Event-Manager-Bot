@@ -1,5 +1,7 @@
 import { DateTime } from "luxon";
 import { logger } from "./mainBot";
+import { GuildScheduledEventRecurrenceRuleWeekday } from "discord.js";
+
 
 /**
  * Parses a custom date-time string in the format "YYYY-MM-DD HH:MM" and a specified IANA timezone,
@@ -50,3 +52,49 @@ export function parseCustomDate(dateTime: string, tz: string): Date | null {
 
     return returnDate;
 }
+
+/**
+ * Converts a JavaScript `Date` object into a corresponding `GuildScheduledEventRecurrenceRuleWeekday` enum value.
+ *
+ * ### Example:
+ * ```ts
+ * const weekday = getWeekdayNameFromDate(new Date("2025-06-18")); 
+ * // Returns: GuildScheduledEventRecurrenceRuleWeekday.Wednesday
+ * ```
+ *
+ * @param date - A valid JavaScript `Date` object.
+ * 
+ * @returns A `GuildScheduledEventRecurrenceRuleWeekday` enum value corresponding to the day of the week.
+ *
+ * @throws Will throw an error if the `Date.getDay()` result is out of expected bounds (0–6).
+ *
+ * @remarks
+ * - This function maps the numeric day index returned by `Date.getDay()` (0 for Sunday, 6 for Saturday)
+ *   to the corresponding Discord recurrence rule weekday enum.
+ * - Ensures compatibility with Discord's scheduled event recurrence system.
+ *
+ * @dependencies
+ * Assumes `GuildScheduledEventRecurrenceRuleWeekday` enum is available in scope (typically from the Discord.js or Discord API typings).
+ */
+export function getWeekdayNameFromDate(date: Date): GuildScheduledEventRecurrenceRuleWeekday {
+    const days: GuildScheduledEventRecurrenceRuleWeekday[] = [
+        GuildScheduledEventRecurrenceRuleWeekday.Sunday,
+        GuildScheduledEventRecurrenceRuleWeekday.Monday,
+        GuildScheduledEventRecurrenceRuleWeekday.Tuesday,
+        GuildScheduledEventRecurrenceRuleWeekday.Wednesday,
+        GuildScheduledEventRecurrenceRuleWeekday.Thursday,
+        GuildScheduledEventRecurrenceRuleWeekday.Friday,
+        GuildScheduledEventRecurrenceRuleWeekday.Saturday,
+    ]
+
+    const day = days[date.getDay()];
+
+    if (!day) {
+        throw new Error("Invalid weekday index: " + date.getDay())
+    }
+
+    return day as GuildScheduledEventRecurrenceRuleWeekday
+}
+
+
+

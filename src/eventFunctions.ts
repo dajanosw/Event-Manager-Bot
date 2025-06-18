@@ -1,6 +1,6 @@
 import { GuildScheduledEventPrivacyLevel, GuildScheduledEventEntityType, TextChannel, GuildScheduledEventRecurrenceRuleFrequency } from "discord.js"
 import { logger, client } from "./mainBot"
-import { parseCustomDate } from "./additionalFunctions"
+import { getWeekdayNameFromDate, parseCustomDate } from "./additionalFunctions"
 
 
 /**
@@ -97,7 +97,7 @@ export async function createNewDiscordEvent(eventInfo: string, discordMessageAtt
 /** Creates a reoccuring event from input */
 export async function createNewDiscordSchedule(eventInfo: string, discordMessageAttatchment: string, guildID: string, replyChannel: string): Promise<void> {
     // Log the Input-Info
-    logger.info("Invoking new Event: " + eventInfo)
+    logger.info("Invoking new Schedule: " + eventInfo)
     let channel = client.channels.cache.get(replyChannel)
 
     // Split the Event Info String into Event Details
@@ -117,7 +117,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
     let location = eventInfoParts[4]
     let eventDescription: string = eventInfoParts[5]!
     let eventInterval = eventInfoParts[6]
-    let eventIntervalFrequency: number = +eventInfoParts[7]!
+    let eventIntervalFrequency:number = +eventInfoParts[7]?.trim()!
 
     // Input the Info into a new Discord Event
     try {
@@ -132,6 +132,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
 
         switch (eventInterval) {
             case "daily": {
+                logger.info("Try creating Daily Schedule.")
                 let event = await guild.scheduledEvents.create({
                     name: eventName,
                     scheduledStartTime: startTime,
@@ -143,19 +144,28 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     recurrenceRule: {
                         frequency: GuildScheduledEventRecurrenceRuleFrequency.Daily,
                         interval: eventIntervalFrequency,
-                        startAt: startTime,
+                        startAt: startTime.toISOString(),
                         byWeekday: []
                     },
                 })
 
-                logger.info(`Event "${event.name}" created for ${startTime}`)
+                logger.info(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated everyday.`)
                 if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime}`)
+                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated everyday.`)
                 }
 
                 break
             }
             case "weekly": {
+                logger.info("Try creating Weekly Schedule.")
+
+                if(eventIntervalFrequency > 2) {
+                    logger.error("Error creating weekly schedule. Interval can only be 1 or 2.")
+                    await (channel as TextChannel).send("Error creating weekly schedule. Interval can only be 1 or 2.")
+                    break
+                } 
+
+                const weekday = getWeekdayNameFromDate(startTime);
                 let event = await guild.scheduledEvents.create({
                     name: eventName,
                     scheduledStartTime: startTime,
@@ -168,18 +178,20 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                         frequency: GuildScheduledEventRecurrenceRuleFrequency.Weekly,
                         interval: eventIntervalFrequency,
                         startAt: startTime,
-                        byWeekday: []
+                        byWeekday: [weekday],
                     },
                 })
 
-                logger.info(`Event "${event.name}" created for ${startTime}`)
+                logger.info(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} week(s).`)
                 if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime}`)
+                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} week(s).`)
                 }
 
                 break
             }
             case "monthly": {
+                logger.info("Try creating Monthly Schedule.")
+                const weekday = getWeekdayNameFromDate(startTime);
                 let event = await guild.scheduledEvents.create({
                     name: eventName,
                     scheduledStartTime: startTime,
@@ -196,14 +208,15 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     },
                 })
 
-                logger.info(`Event "${event.name}" created for ${startTime}`)
+                logger.info(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} month(s).`)
                 if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime}`)
+                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} month(s).`)
                 }
 
                 break
             }
             case "yearly": {
+                logger.info("Try creating Yearly Schedule.")
                 let event = await guild.scheduledEvents.create({
                     name: eventName,
                     scheduledStartTime: startTime,
@@ -221,9 +234,9 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     },
                 })
 
-                logger.info(`Event "${event.name}" created for ${startTime}`)
+                logger.info(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} Year(s).`)
                 if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime}`)
+                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} Year(s).`)
                 }
 
                 break
@@ -241,5 +254,3 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
         }
     }
 }
-
-
