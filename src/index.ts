@@ -85,7 +85,7 @@ function createNewEvent(eventInfo: string, discordMessageAttatchment: string): v
 
     // Split the Event Info String into Event Details
     let eventInfoParts: string[] = new Array()
-    eventInfoParts = eventInfo.split(";")
+    eventInfoParts = eventInfo.split("; ")
     let eventName = eventInfoParts[0]
     let startTime = eventInfoParts[1]
     let endTime = eventInfoParts[2]
