@@ -92,6 +92,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
     // Log the Input-Info
     logger.info("Invoking new Schedule: " + eventInfo)
     let channel = client.channels.cache.get(replyChannel)
+    let frequence = ""
 
     // Split the Event Info String into Event Details
     let eventDetails = extractEventdetails(eventInfo, "New Schedule")
@@ -131,11 +132,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     },
                 })
 
-                logger.info(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated everyday.`)
-                if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated everyday.`)
-                }
-
+                frequence = "day"
                 break
             }
 
@@ -145,7 +142,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                 if((await eventDetails).frequency > 2 || (await eventDetails).frequency < 0) {
                     logger.error("Error creating weekly schedule. Interval can only be 1 or 2. Input value: " + (await eventDetails).frequency)
                     await (channel as TextChannel).send("Error creating weekly schedule. Interval can only be 1 or 2. Input Value: " + (await eventDetails).frequency)
-                    break
+                    return
                 } 
 
                 const weekday = getWeekdayNameFromDate((await eventDetails).startTime);
@@ -166,11 +163,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     },
                 })
 
-                logger.info(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} week(s).`)
-                if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} week(s).`)
-                }
-
+                frequence = "week"
                 break
             }
 
@@ -194,11 +187,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     },
                 })
 
-                logger.info(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} month(s).`)
-                if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} month(s).`)
-                }
-
+                frequence = "month"
                 break
             }
 
@@ -221,12 +210,8 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                         byMonthDay: [],
                     },
                 })
-
-                logger.info(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} year(s).`)
-                if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} year(s).`)
-                }
-
+                
+                frequence = "year"
                 break
             }
 
@@ -234,7 +219,13 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
             default: {
                 logger.error("Could not fetch event schedule. Fetched Input: " + (await eventDetails).interval)
                 await (channel as TextChannel).send("Failed: Schedule not valid. Input: " + (await eventDetails).interval)
+                return
             }
+        }
+        
+        logger.info(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} week(s).`)
+        if (channel && channel.isTextBased()) {
+            await (channel as TextChannel).send(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} ` + frequence + `(s).`)
         }
 
     } catch (e) {

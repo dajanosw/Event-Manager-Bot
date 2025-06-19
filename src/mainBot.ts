@@ -78,7 +78,8 @@ try {
                         break
                     }
                     default: {
-                        logger.error("Invalid Input or empty Line.")
+                        logger.error("Invalid Operation: " + discordMessageParts[0])
+                        return
                     }
                 }
             }
