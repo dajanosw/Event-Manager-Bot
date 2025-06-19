@@ -197,8 +197,9 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                 frequence = "week"
                 break
             }
-
-            case "monthly": {
+            
+            // Case currently not working due to Discord API
+            /**case "monthly": {
                 logger.info("Try creating Monthly Schedule.")
                 const weekday = getWeekdayNameFromDate((await eventDetails).startTime);
                 let event = await guild.scheduledEvents.create({
@@ -220,9 +221,10 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
 
                 frequence = "month"
                 break
-            }
+            }*/
 
-            case "yearly": {
+            // Case currently not working due to Discord API
+            /**case "yearly": {
                 logger.info("Try creating Yearly Schedule.")
                 let event = await guild.scheduledEvents.create({
                     name: (await eventDetails).eventName,
@@ -244,7 +246,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                 
                 frequence = "year"
                 break
-            }
+            }*/
 
             // if none of the intervals is true, send an error message in the logs and on the server
             default: {
@@ -254,7 +256,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
             }
         }
         
-        logger.info(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} week(s).`)
+        logger.info(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} `+ frequence + `(s).`)
         if (channel && channel.isTextBased()) {
             await (channel as TextChannel).send(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} ` + frequence + `(s).`)
         }
