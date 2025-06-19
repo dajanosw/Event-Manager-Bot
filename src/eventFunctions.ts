@@ -1,6 +1,6 @@
 import { GuildScheduledEventPrivacyLevel, GuildScheduledEventEntityType, TextChannel, GuildScheduledEventRecurrenceRuleFrequency } from "discord.js"
 import { logger, client } from "./mainBot"
-import { eventHasEmptyValues, getWeekdayNameFromDate, checkTimeInPast } from "./additionalFunctions"
+import { eventHasEmptyValues, getWeekdayNameFromDate, checkTimeInPast, startTimebBeforeEndTime } from "./additionalFunctions"
 import { extractEventdetails } from "./EventDetails"
 
 
@@ -38,7 +38,6 @@ import { extractEventdetails } from "./EventDetails"
  * - Requires the `client` Discord bot instance to be available in scope.
  * - Depends on `logger` for logging, and `parseCustomDate` for date parsing.
  */
-
 export async function createNewDiscordEvent(eventInfo: string, discordMessageAttatchment: string, guildID: string, replyChannel: string): Promise<void> {
     // Log the Input-Info
     logger.info("Invoking new Event: " + eventInfo)
@@ -56,6 +55,13 @@ export async function createNewDiscordEvent(eventInfo: string, discordMessageAtt
     if(checkTimeInPast((await eventDetails).startTime) || checkTimeInPast((await eventDetails).endTime)){
         logger.error("Start or End Time is in the past. Please retry.")
         await (channel as TextChannel).send("Start or End Time is in the past. Please retry.")
+        return
+    }
+
+    //check if end time is after start time
+    if(startTimebBeforeEndTime((await eventDetails).startTime, (await eventDetails).endTime)){
+        logger.error("Event cannot end before the start time. Please retry.")
+        await (channel as TextChannel).send("Event cannot end before the start time. Please retry.")
         return
     }
 
@@ -116,6 +122,13 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
     if(checkTimeInPast((await eventDetails).startTime) || checkTimeInPast((await eventDetails).endTime)){
         logger.error("Start or End Time is in the past. Please retry.")
         await (channel as TextChannel).send("Start or End Time is in the past. Please retry.")
+        return
+    }
+
+    //check if end time is after start time
+    if(startTimebBeforeEndTime((await eventDetails).startTime, (await eventDetails).endTime)){
+        logger.error("Event cannot end before the start time. Please retry.")
+        await (channel as TextChannel).send("Event cannot end before the start time. Please retry.")
         return
     }
 

@@ -158,3 +158,31 @@ export function checkTimeInPast(time: Date): boolean {
         return true
     }
 }
+
+/**
+ * Checks whether the `startTime` is greater than or equal to the `endTime`, indicating an invalid or non-chronological time range.
+ *
+ * ### Example:
+ * ```ts
+ * const isInvalid = startTimebBeforeEndTime(
+ *   new Date("2025-06-20T15:00:00Z"),
+ *   new Date("2025-06-20T15:00:00Z")
+ * );
+ * // Returns: true, because startTime is equal to endTime
+ * ```
+ *
+ * * @param startTime - A `Date` object representing the event's start time.
+ * @param endTime - A `Date` object representing the event's end time.
+ * 
+ * @returns `true` if `startTime` is greater than or equal to `endTime` (invalid range); `false` otherwise.
+ *
+ * @remarks
+ * - This function is used to validate chronological order between start and end times.
+ * - A return value of `true` typically means the time range should be rejected or flagged.
+ *
+ * @dependencies
+ * None
+ */
+export function startTimebBeforeEndTime(startTime: Date, endTime: Date): boolean {
+    return startTime >= endTime
+}
