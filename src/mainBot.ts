@@ -70,11 +70,13 @@ try {
                     // In Case "New Event" create a new one-time Discord Event
                     case "New Event": {
                         createNewDiscordEvent(discordMessageParts[1]!, discordMessageAttatchment, discordServerID!, channelSent!)
+                        message.react('✅')
                         break
                     }
                     // In Case "New Schedule" create a new Discord Event with Input
                     case "New Schedule": {
                         createNewDiscordSchedule(discordMessageParts[1]!, discordMessageAttatchment, discordServerID!, channelSent!)
+                        message.react('✅')
                         break
                     }
                     default: {
@@ -84,6 +86,7 @@ try {
                 }
             }
         }
+
     })
 } catch(e) {
     logger.error(e)

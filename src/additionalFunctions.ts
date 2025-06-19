@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import { logger } from "./mainBot";
 import { GuildScheduledEventRecurrenceRuleWeekday } from "discord.js";
 import type { EventDetails } from "./EventDetails";
+import { start } from "repl";
 
 
 /**
@@ -127,3 +128,13 @@ export function eventHasEmptyValues(eventObject: EventDetails): boolean {
     }
 }
 
+export function checkTimeInPast(startTime: Date): boolean {
+    let currentDate: Date = new Date(Date.now())
+    
+    if (currentDate < startTime) {
+        return false
+    }
+    else {
+        return true
+    }
+}

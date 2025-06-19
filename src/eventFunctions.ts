@@ -1,6 +1,6 @@
 import { GuildScheduledEventPrivacyLevel, GuildScheduledEventEntityType, TextChannel, GuildScheduledEventRecurrenceRuleFrequency } from "discord.js"
 import { logger, client } from "./mainBot"
-import { eventHasEmptyValues, getWeekdayNameFromDate } from "./additionalFunctions"
+import { eventHasEmptyValues, getWeekdayNameFromDate, checkTimeInPast } from "./additionalFunctions"
 import { extractEventdetails } from "./EventDetails"
 
 
@@ -48,6 +48,14 @@ export async function createNewDiscordEvent(eventInfo: string, discordMessageAtt
     let eventDetails = extractEventdetails(eventInfo, "New Event")
     if(eventHasEmptyValues(await eventDetails)) {
         logger.error("Something went wrong. Please check your Event Details: " + eventInfo)
+        await (channel as TextChannel).send("Something went wrong. Please check your Event Details: " + eventInfo)
+        return
+    }
+
+    // Check for Start Time in the past
+    if(checkTimeInPast((await eventDetails).startTime) || checkTimeInPast((await eventDetails).endTime)){
+        logger.error("Start or End Time is in the past. Please retry.")
+        await (channel as TextChannel).send("Start or End Time is in the past. Please retry.")
         return
     }
 
@@ -96,8 +104,18 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
 
     // Split the Event Info String into Event Details
     let eventDetails = extractEventdetails(eventInfo, "New Schedule")
+    
+    // Check for empty Values
     if(eventHasEmptyValues(await eventDetails)) {
         logger.error("Something went wrong. Please check your Event Details: " + eventInfo)
+        await (channel as TextChannel).send("Something went wrong. Please check your Event Details: " + eventInfo)
+        return
+    }
+
+    // Check for Start Time in the past
+    if(checkTimeInPast((await eventDetails).startTime) || checkTimeInPast((await eventDetails).endTime)){
+        logger.error("Start or End Time is in the past. Please retry.")
+        await (channel as TextChannel).send("Start or End Time is in the past. Please retry.")
         return
     }
 
