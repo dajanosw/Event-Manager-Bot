@@ -65,11 +65,6 @@ try {
                 let discordMessageParts: string[] = new Array()
                 discordMessageParts = line.split(": ")
                 
-                console.log("eventInfo: " + discordMessageParts[1])
-                console.log("discordMessageAttatchment: " + discordMessageAttatchment)
-                console.log("guildID: " + discordServerID)
-                console.log("replyChannel: " + channelSent)
-                
                 switch(discordMessageParts[0]) {
                     // In Case "New Event" create a new one-time Discord Event
                     case "New Event": {
