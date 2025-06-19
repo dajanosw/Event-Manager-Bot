@@ -1,6 +1,6 @@
 import { GuildScheduledEventPrivacyLevel, GuildScheduledEventEntityType, TextChannel, GuildScheduledEventRecurrenceRuleFrequency } from "discord.js"
 import { logger, client } from "./mainBot"
-import { eventHasEmptyValues, getWeekdayNameFromDate, checkTimeInPast, startTimebBeforeEndTime } from "./additionalFunctions"
+import { eventHasEmptyValues, getWeekdayNameFromDate, checkTimeInPast, startTimeBeforeEndTime } from "./additionalFunctions"
 import { extractEventdetails } from "./EventDetails"
 
 
@@ -59,7 +59,7 @@ export async function createNewDiscordEvent(eventInfo: string, discordMessageAtt
     }
 
     //check if end time is after start time
-    if(startTimebBeforeEndTime((await eventDetails).startTime, (await eventDetails).endTime)){
+    if(startTimeBeforeEndTime((await eventDetails).startTime, (await eventDetails).endTime)){
         logger.error("Event cannot end before the start time. Please retry.")
         await (channel as TextChannel).send("Event cannot end before the start time. Please retry.")
         return
@@ -126,7 +126,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
     }
 
     //check if end time is after start time
-    if(startTimebBeforeEndTime((await eventDetails).startTime, (await eventDetails).endTime)){
+    if(startTimeBeforeEndTime((await eventDetails).startTime, (await eventDetails).endTime)){
         logger.error("Event cannot end before the start time. Please retry.")
         await (channel as TextChannel).send("Event cannot end before the start time. Please retry.")
         return
