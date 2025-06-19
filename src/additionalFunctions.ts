@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { logger } from "./mainBot";
 import { GuildScheduledEventRecurrenceRuleWeekday } from "discord.js";
+import type { EventDetails } from "./EventDetails";
 
 
 /**
@@ -27,7 +28,6 @@ import { GuildScheduledEventRecurrenceRuleWeekday } from "discord.js";
  * @dependencies
  * Requires `luxon` and a `logger` utility to be available in scope.
  */
-
 export function parseCustomDate(dateTime: string, tz: string): Date | null {
     // Check for correct DateTime-Format 
     let regex = /^(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2})$/;
@@ -96,5 +96,34 @@ export function getWeekdayNameFromDate(date: Date): GuildScheduledEventRecurrenc
     return day as GuildScheduledEventRecurrenceRuleWeekday
 }
 
-
+/**
+ * Checks whether any required fields in an `EventDetails` object are missing or contain default/empty values.
+ *
+ * ### Example:
+ * ```ts
+ * const hasEmptyFields = eventHasEmptyValues(event);
+ * // Returns: true if any required field is empty or default
+ * ```
+ *
+ * @param eventObject - An object of type `EventDetails` to validate.
+ * 
+ * @returns `true` if one or more critical fields are empty, invalid, or default; otherwise, `false`.
+ *
+ * @remarks
+ * - Compares `startTime` and `endTime` against `new Date()` to detect default dates.
+ * - Assumes fields like `eventName`, `description`, `timezone`, `eventLocation`, `interval` must not be empty strings.
+ * - Assumes `frequency` must be a non-zero number to be considered valid.
+ * - Intended for use in pre-submission validation or integrity checks before saving or sending event data.
+ *
+ * @dependencies
+ * - Assumes `EventDetails` type is defined and includes the relevant properties used in this function.
+ */
+export function eventHasEmptyValues(eventObject: EventDetails): boolean {
+    if( eventObject.eventName == "" || eventObject.description == "" || eventObject.endTime == new Date() || eventObject.eventLocation == "" || eventObject.frequency == 0 || eventObject.interval == "" || eventObject.startTime == new Date() || eventObject.timezone == ""){
+        return true
+    }
+    else {
+        return false
+    }
+}
 

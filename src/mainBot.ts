@@ -14,6 +14,7 @@ export const client = new Client({
     ],
 })
 
+// If not exists, create a LogDir and Log-File
 const logDir = path.dirname(process.env.LOGFILE_PATH || '')
 if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
@@ -84,7 +85,7 @@ try {
         }
     })
 } catch(e) {
-    logger.warn(e)
+    logger.error(e)
 }
 
 await client.login(process.env.DISCORD_BOT_TOKEN)
