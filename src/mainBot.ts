@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, GuildScheduledEvent } from 'discord.js'
+import { Client, Events, GatewayIntentBits } from 'discord.js'
 import { createLogger, format, transports } from 'winston'
 import fs from 'fs'
 import path from 'path'

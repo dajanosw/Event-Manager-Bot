@@ -1,6 +1,7 @@
 import { GuildScheduledEventPrivacyLevel, GuildScheduledEventEntityType, TextChannel, GuildScheduledEventRecurrenceRuleFrequency } from "discord.js"
 import { logger, client } from "./mainBot"
 import { getWeekdayNameFromDate, parseCustomDate } from "./additionalFunctions"
+import type { EventDetails } from "./objectDef"
 
 
 /**
@@ -44,21 +45,7 @@ export async function createNewDiscordEvent(eventInfo: string, discordMessageAtt
     let channel = client.channels.cache.get(replyChannel)
 
     // Split the Event Info String into Event Details
-    let eventInfoParts: string[] = new Array()
-    eventInfoParts = eventInfo.split("; ")
-
-    // Catch Empty Timezone
-    let eventTimezone = eventInfoParts[3]
-    if (eventTimezone == "") {
-        eventTimezone = "Europe/Amsterdam"
-    }
-
-    // Define the remaining attributes
-    let eventName: string = eventInfoParts[0]!
-    let startTime = new Date(parseCustomDate(eventInfoParts[1]!, eventTimezone!)!)
-    let endTime = new Date(parseCustomDate(eventInfoParts[2]!, eventTimezone!)!)
-    let location = eventInfoParts[4]
-    let eventDescription: string = eventInfoParts[5]!
+    let eventDetails = extractEventdetails(eventInfo, "New Event")
 
     // Input the Info into a new Discord Event
     try {
@@ -70,19 +57,22 @@ export async function createNewDiscordEvent(eventInfo: string, discordMessageAtt
         let null_date = new Date(0);
 
         let guild = await client.guilds.fetch(guildID)
+        let location = (await eventDetails).eventLocation
+
         let event = await guild.scheduledEvents.create({
-            name: eventName,
-            scheduledStartTime: startTime,
-            scheduledEndTime: endTime,
+            name: (await eventDetails).eventName,
+            scheduledStartTime: (await eventDetails).startTime,
+            scheduledEndTime: (await eventDetails).endTime,
             privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
             entityType: GuildScheduledEventEntityType.External,
             entityMetadata: { location },
-            description: eventDescription,
+            description: (await eventDetails).description,
+            image: discordMessageAttatchment,
         })
-        logger.info(`Event "${event.name}" created for ${startTime}`)
+        logger.info(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime}`)
 
         if (channel && channel.isTextBased()) {
-            await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime}`)
+            await (channel as TextChannel).send(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime}`)
         }
 
     } catch (e) {
@@ -101,23 +91,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
     let channel = client.channels.cache.get(replyChannel)
 
     // Split the Event Info String into Event Details
-    let eventInfoParts: string[] = new Array()
-    eventInfoParts = eventInfo.split("; ")
-
-    // Catch Empty Timezone
-    let eventTimezone = eventInfoParts[3]
-    if (eventTimezone == "") {
-        eventTimezone = "Europe/Amsterdam"
-    }
-
-    // Define the remaining attributes
-    let eventName: string = eventInfoParts[0]!
-    let startTime = new Date(parseCustomDate(eventInfoParts[1]!, eventTimezone!)!)
-    let endTime = new Date(parseCustomDate(eventInfoParts[2]!, eventTimezone!)!)
-    let location = eventInfoParts[4]
-    let eventDescription: string = eventInfoParts[5]!
-    let eventInterval = eventInfoParts[6]
-    let eventIntervalFrequency:number = +eventInfoParts[7]?.trim()!
+    let eventDetails = extractEventdetails(eventInfo, "New Schedule")
 
     // Input the Info into a new Discord Event
     try {
@@ -126,32 +100,33 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
             return
         }
 
-        let null_date = new Date(0)
-
         let guild = await client.guilds.fetch(guildID)
+        let location = (await eventDetails).eventLocation
 
-        switch (eventInterval) {
+        //create the event based on the schedule interval (daily, weekly, monthly or yearly)
+        switch ((await eventDetails).interval) {
             case "daily": {
                 logger.info("Try creating Daily Schedule.")
                 let event = await guild.scheduledEvents.create({
-                    name: eventName,
-                    scheduledStartTime: startTime,
-                    scheduledEndTime: endTime,
+                    name: (await eventDetails).eventName,
+                    scheduledStartTime: (await eventDetails).startTime,
+                    scheduledEndTime: (await eventDetails).endTime,
                     privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
                     entityType: GuildScheduledEventEntityType.External,
                     entityMetadata: { location },
-                    description: eventDescription,
+                    description: (await eventDetails).description,
+                    image: discordMessageAttatchment,
                     recurrenceRule: {
                         frequency: GuildScheduledEventRecurrenceRuleFrequency.Daily,
-                        interval: eventIntervalFrequency,
-                        startAt: startTime.toISOString(),
+                        interval: (await eventDetails).frequency,
+                        startAt: (await eventDetails).startTime.toISOString(),
                         byWeekday: []
                     },
                 })
 
-                logger.info(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated everyday.`)
+                logger.info(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated everyday.`)
                 if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated everyday.`)
+                    await (channel as TextChannel).send(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated everyday.`)
                 }
 
                 break
@@ -159,58 +134,60 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
             case "weekly": {
                 logger.info("Try creating Weekly Schedule.")
 
-                if(eventIntervalFrequency > 2) {
-                    logger.error("Error creating weekly schedule. Interval can only be 1 or 2.")
-                    await (channel as TextChannel).send("Error creating weekly schedule. Interval can only be 1 or 2.")
+                if((await eventDetails).frequency > 2 || (await eventDetails).frequency < 0) {
+                    logger.error("Error creating weekly schedule. Interval can only be 1 or 2. Input value: " + (await eventDetails).frequency)
+                    await (channel as TextChannel).send("Error creating weekly schedule. Interval can only be 1 or 2. Input Value: " + (await eventDetails).frequency)
                     break
                 } 
 
-                const weekday = getWeekdayNameFromDate(startTime);
+                const weekday = getWeekdayNameFromDate((await eventDetails).startTime);
                 let event = await guild.scheduledEvents.create({
-                    name: eventName,
-                    scheduledStartTime: startTime,
-                    scheduledEndTime: endTime,
+                    name: (await eventDetails).eventName,
+                    scheduledStartTime: (await eventDetails).startTime,
+                    scheduledEndTime: (await eventDetails).endTime,
                     privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
                     entityType: GuildScheduledEventEntityType.External,
                     entityMetadata: { location },
-                    description: eventDescription,
+                    description: (await eventDetails).description,
+                    image: discordMessageAttatchment,
                     recurrenceRule: {
                         frequency: GuildScheduledEventRecurrenceRuleFrequency.Weekly,
-                        interval: eventIntervalFrequency,
-                        startAt: startTime,
+                        interval: (await eventDetails).frequency,
+                        startAt: (await eventDetails).startTime,
                         byWeekday: [weekday],
                     },
                 })
 
-                logger.info(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} week(s).`)
+                logger.info(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} week(s).`)
                 if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} week(s).`)
+                    await (channel as TextChannel).send(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} week(s).`)
                 }
 
                 break
             }
             case "monthly": {
                 logger.info("Try creating Monthly Schedule.")
-                const weekday = getWeekdayNameFromDate(startTime);
+                const weekday = getWeekdayNameFromDate((await eventDetails).startTime);
                 let event = await guild.scheduledEvents.create({
-                    name: eventName,
-                    scheduledStartTime: startTime,
-                    scheduledEndTime: endTime,
+                    name: (await eventDetails).eventName,
+                    scheduledStartTime: (await eventDetails).startTime,
+                    scheduledEndTime: (await eventDetails).endTime,
                     privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
                     entityType: GuildScheduledEventEntityType.External,
                     entityMetadata: { location },
-                    description: eventDescription,
+                    description: (await eventDetails).description,
+                    image: discordMessageAttatchment,
                     recurrenceRule: {
                         frequency: GuildScheduledEventRecurrenceRuleFrequency.Monthly,
-                        interval: eventIntervalFrequency,
-                        startAt: startTime,
+                        interval: (await eventDetails).frequency,
+                        startAt: (await eventDetails).startTime,
                         byNWeekday: []
                     },
                 })
 
-                logger.info(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} month(s).`)
+                logger.info(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} month(s).`)
                 if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} month(s).`)
+                    await (channel as TextChannel).send(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} month(s).`)
                 }
 
                 break
@@ -218,32 +195,34 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
             case "yearly": {
                 logger.info("Try creating Yearly Schedule.")
                 let event = await guild.scheduledEvents.create({
-                    name: eventName,
-                    scheduledStartTime: startTime,
-                    scheduledEndTime: endTime,
+                    name: (await eventDetails).eventName,
+                    scheduledStartTime: (await eventDetails).startTime,
+                    scheduledEndTime: (await eventDetails).endTime,
                     privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
                     entityType: GuildScheduledEventEntityType.External,
                     entityMetadata: { location },
-                    description: eventDescription,
+                    description: (await eventDetails).description,
+                    image: discordMessageAttatchment,
                     recurrenceRule: {
                         frequency: GuildScheduledEventRecurrenceRuleFrequency.Yearly,
-                        interval: eventIntervalFrequency,
-                        startAt: startTime,
+                        interval: (await eventDetails).frequency,
+                        startAt: (await eventDetails).startTime,
                         byMonth: [],
                         byMonthDay: [],
                     },
                 })
 
-                logger.info(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} Year(s).`)
+                logger.info(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} year(s).`)
                 if (channel && channel.isTextBased()) {
-                    await (channel as TextChannel).send(`Event "${event.name}" created for ${startTime} with schedule ${eventInterval} repeated every ${eventIntervalFrequency} Year(s).`)
+                    await (channel as TextChannel).send(`Event "${event.name}" created for ${(await eventDetails).startTime} with schedule ${(await eventDetails).interval} repeated every ${(await eventDetails).frequency} year(s).`)
                 }
 
                 break
             }
+            // if none of the intervals is true, send an error message in the logs and on the server
             default: {
-                logger.error("Could not fetch event schedule.")
-                await (channel as TextChannel).send("Failed: Schedule not valid")
+                logger.error("Could not fetch event schedule. Fetched Input: " + (await eventDetails).interval)
+                await (channel as TextChannel).send("Failed: Schedule not valid. Input: " + (await eventDetails).interval)
             }
         }
 
@@ -253,4 +232,96 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
             await (channel as TextChannel).send("Failed: Invalid Timezone")
         }
     }
+}
+
+/**
+ * Parses a semicolon-separated input string to extract structured event details based on the event type.
+ *
+ * ### Example:
+ * ```ts
+ * const baseString = "Team Meeting; 2025-06-20 09:00; 2025-06-20 10:00; Europe/Berlin; Zoom; Discuss roadmap";
+ * const event = await extractEventdetails(baseString, "New Event");
+ * // Returns: EventDetails object with parsed values
+ * ```
+ *
+ * @param baseString - A semicolon-separated string containing the event attributes.
+ *   - For `"New Event"`: `"Event Name; Start Time; End Time; Timezone; Location; Description"`
+ *   - For `"New Schedule"`: `"Event Name; Start Time; End Time; Timezone; Location; Description; Interval; Frequency"`
+ *
+ * @param eventType - A string indicating the event type. Accepts `"New Event"` or `"New Schedule"`.
+ * 
+ * @returns A `Promise<EventDetails>` object containing the parsed and structured event properties.
+ *
+ * @remarks
+ * - If the timezone field is empty, defaults to `"Europe/Amsterdam"`.
+ * - Dates are parsed using `parseCustomDate`, and converted to JavaScript `Date` objects.
+ * - If the `eventType` is unrecognized, an empty/default `EventDetails` object is returned and an error is logged.
+ * - Used to support both single-instance events and recurring scheduled events.
+ *
+ * @throws Does not throw; logs errors and returns default fallback object if input is invalid.
+ *
+ * @dependencies
+ * - Requires `parseCustomDate` for date parsing and a `logger` utility.
+ * - Assumes `EventDetails` interface is defined and available in scope.
+ */
+export async function extractEventdetails(baseString: string, eventType: string): Promise<EventDetails> {
+    let eventInfoParts: string[] = new Array()
+    eventInfoParts = baseString.split("; ")
+
+    // Catch Empty Timezone
+    let eventTimezone: string = eventInfoParts[3]!
+    if (eventTimezone == "") {
+        eventTimezone = "Europe/Amsterdam"
+    }
+
+    // Define the remaining attributes
+    let eventName: string = eventInfoParts[0]!
+    let startTime = new Date(parseCustomDate(eventInfoParts[1]!, eventTimezone!)!)
+    let endTime = new Date(parseCustomDate(eventInfoParts[2]!, eventTimezone!)!)
+    let location:string = eventInfoParts[4]!
+    let eventDescription: string = eventInfoParts[5]!
+
+    // Return the corresponding Event Details as Interface type
+    if(eventType == "New Event"){
+        return {
+        eventName: eventName,
+        startTime: startTime,
+        endTime: endTime,
+        timezone: eventTimezone,
+        eventLocation: location,
+        description: eventDescription,
+        interval: "",
+        frequency: 0,
+    }
+    } 
+    else if (eventType == "New Schedule") {
+        let eventInterval:string = eventInfoParts[6]!
+        let eventIntervalFrequency:number = +eventInfoParts[7]?.trim()!
+
+        return {
+            eventName: eventName,
+            startTime: startTime,
+            endTime: endTime,
+            timezone: eventTimezone,
+            eventLocation: location,
+            description: eventDescription,
+            interval: eventInterval,
+            frequency: eventIntervalFrequency,
+        }
+    }
+    else {
+        // If Input is invalid, return an empty object
+        logger.error("Invalid value for eventType: " + eventType)
+        return{
+            eventName: "",
+            startTime: new Date(),
+            endTime: new Date(),
+            timezone: "",
+            eventLocation: "",
+            description: "",
+            interval: "",
+            frequency: 0,
+        }
+    }
+    
 }
