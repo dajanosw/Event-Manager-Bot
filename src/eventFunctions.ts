@@ -48,6 +48,7 @@ export async function createNewDiscordEvent(eventInfo: string, discordMessageAtt
     if(eventHasEmptyValues(await eventDetails)) {
         logger.error("Something went wrong. Please check your Event Details: " + eventInfo)
         await (channel as TextChannel).send("Something went wrong. Please check your Event Details: " + eventInfo)
+        await (channel as TextChannel).send("Event Details need this format: Name of Event; Event Start Time; Event End Time; Timezone in IANAS-Formatting; Location")
         return
     }
 
@@ -148,6 +149,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
     if(scheduleHasEmptyValues(await eventDetails)) {
         logger.error("Something went wrong. Please check your Event Details: " + eventInfo)
         await (channel as TextChannel).send("Something went wrong. Please check your Event Details: " + eventInfo)
+        await (channel as TextChannel).send("Event Details need this format: Name of Event; Event Start Time; Event End Time; Timezone in IANAS-Formatting; Location; Interval (daily/weekly); Frequency")
         return
     }
 
