@@ -128,10 +128,30 @@ export function eventHasEmptyValues(eventObject: EventDetails): boolean {
     }
 }
 
-export function checkTimeInPast(startTime: Date): boolean {
+/**
+ * Determines whether a given `Date` is in the past relative to the current system time.
+ *
+ * ### Example:
+ * ```ts
+ * const isPast = checkTimeInPast(new Date("2025-06-01T12:00:00Z"));
+ * // Returns: true if the date/time is before now, false otherwise
+ * ```
+ *
+ * @param startTime - A JavaScript `Date` object representing the time to check.
+ * 
+ * @returns `true` if the provided `startTime` is in the past; `false` if it is in the future.
+ *
+ * @remarks
+ * - Uses the system’s current time (`Date.now()`) for comparison.
+ * - Intended for validating scheduled events, deadlines, or ensuring future-only input.
+ *
+ * @dependencies
+ * None
+ */
+export function checkTimeInPast(time: Date): boolean {
     let currentDate: Date = new Date(Date.now())
     
-    if (currentDate < startTime) {
+    if (currentDate < time) {
         return false
     }
     else {
