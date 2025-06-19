@@ -47,11 +47,17 @@ try {
     client.on(Events.MessageCreate, async (message) => {
         let discordMessage = message.content
         let discordMessageLines: string[] = new Array()
-        let discordMessageAttatchment = ""
+        let discordMessageAttachment = ""
         let discordServerID = message.guild?.id
         let channelSent = message.channel.id
         let botPrefix = "!dmb "
         var botPrefixRegEx = /!dmb /gi
+
+        const imageAttachment = message.attachments.find(att => att.contentType?.startsWith("image/"));
+        if (imageAttachment) {
+            discordMessageAttachment = imageAttachment.url;
+        }
+        
 
         // Split up the message string by Lines and double colons
         discordMessageLines = discordMessage.split("\n")
@@ -69,13 +75,13 @@ try {
                 switch(discordMessageParts[0]) {
                     // In Case "New Event" create a new one-time Discord Event
                     case "New Event": {
-                        createNewDiscordEvent(discordMessageParts[1]!, discordMessageAttatchment, discordServerID!, channelSent!)
+                        createNewDiscordEvent(discordMessageParts[1]!, discordMessageAttachment, discordServerID!, channelSent!)
                         message.react('✅')
                         break
                     }
                     // In Case "New Schedule" create a new Discord Event with Input
                     case "New Schedule": {
-                        createNewDiscordSchedule(discordMessageParts[1]!, discordMessageAttatchment, discordServerID!, channelSent!)
+                        createNewDiscordSchedule(discordMessageParts[1]!, discordMessageAttachment, discordServerID!, channelSent!)
                         message.react('✅')
                         break
                     }

@@ -1,6 +1,6 @@
 import { GuildScheduledEventPrivacyLevel, GuildScheduledEventEntityType, TextChannel, GuildScheduledEventRecurrenceRuleFrequency } from "discord.js"
 import { logger, client } from "./mainBot"
-import { eventHasEmptyValues, getWeekdayNameFromDate, checkTimeInPast, startTimeBeforeEndTime } from "./additionalFunctions"
+import { eventHasEmptyValues, getWeekdayNameFromDate, checkTimeInPast, startTimeBeforeEndTime, scheduleHasEmptyValues } from "./additionalFunctions"
 import { extractEventdetails } from "./EventDetails"
 
 
@@ -20,7 +20,7 @@ import { extractEventdetails } from "./EventDetails"
  *
  * @param eventInfo - A semicolon-separated string containing the event's name, start time, end time, timezone, location, and description.
  *   Format: `"Event Name; StartTime; EndTime; Timezone; Location; Description"`
- * @param discordMessageAttatchment - A string representing an attachment or media identifier (currently unused in logic).
+ * @param discordMessageAttachment - A string representing an attachment or media identifier (currently unused in logic).
  * @param guildID - The Discord server (guild) ID where the event should be created.
  * @param replyChannel - The channel ID where a success or error message will be sent.
  * 
@@ -38,7 +38,7 @@ import { extractEventdetails } from "./EventDetails"
  * - Requires the `client` Discord bot instance to be available in scope.
  * - Depends on `logger` for logging, and `parseCustomDate` for date parsing.
  */
-export async function createNewDiscordEvent(eventInfo: string, discordMessageAttatchment: string, guildID: string, replyChannel: string): Promise<void> {
+export async function createNewDiscordEvent(eventInfo: string, discordMessageAttachment: string, guildID: string, replyChannel: string): Promise<void> {
     // Log the Input-Info
     logger.info("Invoking new Event: " + eventInfo)
     let channel = client.channels.cache.get(replyChannel)
@@ -85,7 +85,7 @@ export async function createNewDiscordEvent(eventInfo: string, discordMessageAtt
             entityType: GuildScheduledEventEntityType.External,
             entityMetadata: { location },
             description: (await eventDetails).description,
-            image: discordMessageAttatchment,
+            image: discordMessageAttachment,
         })
         logger.info(`Event "${(await eventDetails).eventName}" created for ${(await eventDetails).startTime}`)
 
@@ -101,8 +101,41 @@ export async function createNewDiscordEvent(eventInfo: string, discordMessageAtt
     }
 }
 
-/** Creates a reoccuring event from input */
-export async function createNewDiscordSchedule(eventInfo: string, discordMessageAttatchment: string, guildID: string, replyChannel: string): Promise<void> {
+/**
+ * Creates a recurring scheduled event in a Discord server based on provided event details and sends feedback to a specified channel.
+ *
+ * ### Example:
+ * ```ts
+ * await createNewDiscordSchedule(
+ *   "Team Sync; 2025-07-01 09:00; 2025-07-01 10:00; Europe/Berlin; Zoom; Weekly team meeting; weekly; 1",
+ *   "attachment.png",
+ *   "123456789012345678",
+ *   "987654321098765432"
+ * );
+ * ```
+ *
+ * @param eventInfo - A semicolon-separated string representing the full event information:
+ *   - `"Event Name; Start Time; End Time; Timezone; Location; Description; Interval; Frequency"`
+ *   - Interval values can be: `"daily"`, `"weekly"` (monthly/yearly currently unsupported).
+ * @param discordMessageAttachment - Optional image or media attachment URL or string (used in the event payload).
+ * @param guildID - The Discord guild (server) ID where the event will be created.
+ * @param replyChannel - The ID of the Discord channel where success or error messages will be posted.
+ *
+ * @returns A `Promise<void>` that resolves once the scheduled event is created or an error message has been sent.
+ *
+ * @remarks
+ * - Relies on `extractEventdetails` to parse and validate input.
+ * - Validates that the event is not in the past and that the start time precedes the end time.
+ * - Supports recurrence rules for daily and weekly intervals (monthly/yearly are stubbed and commented out due to current Discord API limitations).
+ * - Sends log output and status feedback to the specified channel for transparency.
+ * - Logs and sends meaningful error messages if inputs are invalid or event creation fails.
+ *
+ * @throws No exceptions are thrown to the caller. Errors are logged and communicated through Discord messages when possible.
+ *
+ * @dependencies
+ * - Requires access to the Discord `client` object, `logger`, and helper functions: `extractEventdetails`, `eventHasEmptyValues`, `checkTimeInPast`, and `startTimebBeforeEndTime`.
+ */
+export async function createNewDiscordSchedule(eventInfo: string, discordMessageAttachment: string, guildID: string, replyChannel: string): Promise<void> {
     // Log the Input-Info
     logger.info("Invoking new Schedule: " + eventInfo)
     let channel = client.channels.cache.get(replyChannel)
@@ -112,7 +145,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
     let eventDetails = extractEventdetails(eventInfo, "New Schedule")
     
     // Check for empty Values
-    if(eventHasEmptyValues(await eventDetails)) {
+    if(scheduleHasEmptyValues(await eventDetails)) {
         logger.error("Something went wrong. Please check your Event Details: " + eventInfo)
         await (channel as TextChannel).send("Something went wrong. Please check your Event Details: " + eventInfo)
         return
@@ -154,7 +187,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     entityType: GuildScheduledEventEntityType.External,
                     entityMetadata: { location },
                     description: (await eventDetails).description,
-                    image: discordMessageAttatchment,
+                    image: discordMessageAttachment,
                     recurrenceRule: {
                         frequency: GuildScheduledEventRecurrenceRuleFrequency.Daily,
                         interval: (await eventDetails).frequency,
@@ -185,7 +218,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     entityType: GuildScheduledEventEntityType.External,
                     entityMetadata: { location },
                     description: (await eventDetails).description,
-                    image: discordMessageAttatchment,
+                    image: discordMessageAttachment,
                     recurrenceRule: {
                         frequency: GuildScheduledEventRecurrenceRuleFrequency.Weekly,
                         interval: (await eventDetails).frequency,
@@ -199,7 +232,8 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
             }
             
             // Case currently not working due to Discord API
-            /**case "monthly": {
+            case "monthly": {
+                /** 
                 logger.info("Try creating Monthly Schedule.")
                 const weekday = getWeekdayNameFromDate((await eventDetails).startTime);
                 let event = await guild.scheduledEvents.create({
@@ -210,7 +244,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     entityType: GuildScheduledEventEntityType.External,
                     entityMetadata: { location },
                     description: (await eventDetails).description,
-                    image: discordMessageAttatchment,
+                    image: discordMessageAttachment,
                     recurrenceRule: {
                         frequency: GuildScheduledEventRecurrenceRuleFrequency.Monthly,
                         interval: (await eventDetails).frequency,
@@ -219,13 +253,16 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     },
                 })
 
-                frequence = "month"
+                frequence = "month"*/
+                logger.error("Monthly schedule currently not working due to Discord API.")
+                await (channel as TextChannel).send("Monthly schedule currently not working due to Discord API.")
+
                 break
-            }*/
+            }
 
             // Case currently not working due to Discord API
-            /**case "yearly": {
-                logger.info("Try creating Yearly Schedule.")
+            case "yearly": {
+                /**logger.info("Try creating Yearly Schedule.")
                 let event = await guild.scheduledEvents.create({
                     name: (await eventDetails).eventName,
                     scheduledStartTime: (await eventDetails).startTime,
@@ -234,7 +271,7 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     entityType: GuildScheduledEventEntityType.External,
                     entityMetadata: { location },
                     description: (await eventDetails).description,
-                    image: discordMessageAttatchment,
+                    image: discordMessageAttachment,
                     recurrenceRule: {
                         frequency: GuildScheduledEventRecurrenceRuleFrequency.Yearly,
                         interval: (await eventDetails).frequency,
@@ -244,9 +281,12 @@ export async function createNewDiscordSchedule(eventInfo: string, discordMessage
                     },
                 })
                 
-                frequence = "year"
+                frequence = "year"*/
+
+                logger.error("Monthly schedule currently not working due to Discord API.")
+                await (channel as TextChannel).send("Monthly schedule currently not working due to Discord API.")
                 break
-            }*/
+            }
 
             // if none of the intervals is true, send an error message in the logs and on the server
             default: {

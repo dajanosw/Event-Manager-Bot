@@ -2,7 +2,6 @@ import { DateTime } from "luxon";
 import { logger } from "./mainBot";
 import { GuildScheduledEventRecurrenceRuleWeekday } from "discord.js";
 import type { EventDetails } from "./EventDetails";
-import { start } from "repl";
 
 
 /**
@@ -120,6 +119,15 @@ export function getWeekdayNameFromDate(date: Date): GuildScheduledEventRecurrenc
  * - Assumes `EventDetails` type is defined and includes the relevant properties used in this function.
  */
 export function eventHasEmptyValues(eventObject: EventDetails): boolean {
+    if( eventObject.eventName == "" || eventObject.description == "" || eventObject.endTime == new Date() || eventObject.eventLocation == "" || eventObject.startTime == new Date() || eventObject.timezone == ""){
+        return true
+    }
+    else {
+        return false
+    }
+}
+
+export function scheduleHasEmptyValues(eventObject: EventDetails): boolean {
     if( eventObject.eventName == "" || eventObject.description == "" || eventObject.endTime == new Date() || eventObject.eventLocation == "" || eventObject.frequency == 0 || eventObject.interval == "" || eventObject.startTime == new Date() || eventObject.timezone == ""){
         return true
     }
@@ -183,6 +191,6 @@ export function checkTimeInPast(time: Date): boolean {
  * @dependencies
  * None
  */
-export function startTimebBeforeEndTime(startTime: Date, endTime: Date): boolean {
+export function startTimeBeforeEndTime(startTime: Date, endTime: Date): boolean {
     return startTime >= endTime
 }
